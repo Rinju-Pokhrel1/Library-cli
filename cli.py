@@ -1,9 +1,11 @@
 from db import signup_user,  get_info, login_system
 from welcome import signup  
 from getpass import getpass 
-
+from db import LibrarySystem
 def menu():
-    while True:
+  
+     system = LibrarySystem() 
+     while True:
         print("\n Library Management System")
         print("1. Login to the portal")
         print("2. Get info")

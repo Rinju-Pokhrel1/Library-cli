@@ -1,7 +1,6 @@
 from getpass import getpass
 from db import LibrarySystem
-from migration import LibrarySystem as MigrationSystem #avoid confucion between db and migration librarysysten ->migrationsystem is used.
-
+from migration import LibrarySystem as MigrationSystem 
 class LibraryApp:
     def __init__(self):
         # Initialize DB and tables
