@@ -91,7 +91,7 @@ class LibrarySystem:
             else:
                 print("Admin already exists.")
 
-             #directly execute 
+           
             print("Tables are created.")
 
 if __name__ == "__main__":

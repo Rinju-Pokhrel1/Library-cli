@@ -1,14 +1,15 @@
 from getpass import getpass
 from db import LibrarySystem
 from migration import LibrarySystem as MigrationSystem 
+
 class LibraryApp:
     def __init__(self):
         # Initialize DB and tables
         migration = MigrationSystem()
         migration.create_tables()
 
-        
         self.system = LibrarySystem()
+        self.current_role = None  #to keep track the currently login user
 
     def menu(self):
         while True:
@@ -24,6 +25,7 @@ class LibraryApp:
                 result = self.system.login_system()
                 if result:
                     username, role = result
+                    self.current_role = role  # Save current role
                     if role == "admin":
                         self.admin_menu()
                     else:
@@ -42,10 +44,11 @@ class LibraryApp:
                 email = input("Enter email: ")
                 role = input("Enter role (admin/student): ").strip().lower()
                 if role not in ("admin", "student"):
-                    print("Invalid role. Try again.")
+                    print("Invalid role. ")
                     continue
-                self.system.signup_user(username, password, dob, email, role)
-                print("Signup successful! You can now log in.")
+
+                creator_role = "admin" if self.current_role == "admin" else "student"
+                self.system.signup_user(username, password, dob, email, role, creator_role)
 
             elif choice == "4":
                 print("Exiting the system. ")
@@ -63,12 +66,16 @@ class LibraryApp:
             print("4. Show All Users")
             print("5. Renew a Student's Book")
             print("6. Mark Student Fine as Paid")
-            print("7. Logout")
+            print("7. View All Books")
+            print("8. Logout")
 
             choice = input("Enter choice: ").strip()
 
             if choice == "1":
-                self.system.add_book()
+                title = input("Enter book title: ")
+                author = input("Enter book author: ")
+                year = int(input("Enter book year: "))
+                self.system.add_book(title, author, year)
 
             elif choice == "2":
                 self.system.update_book()
@@ -97,8 +104,11 @@ class LibraryApp:
                     print("Student username not found.")
 
             elif choice == "7":
+                self.system.view_all_books()
+
+            elif choice == "8":
                 print("Logging out of admin menu.")
-                break
+                break 
 
             else:
                 print("Invalid choice. Try again.")
@@ -106,12 +116,13 @@ class LibraryApp:
     def user_menu(self, username):
         user_id = self.system.get_user_id_by_username(username)
         while True:
-            print("\n User Menu ")
+            print("\nUser Menu")
             print("1. View My Borrowed Books")
             print("2. View My Fines")
             print("3. Renew Book")
             print("4. Return Book")
-            print("5. Logout")
+            print("5. View All Books")
+            print("6. Logout")
 
             choice = input("Choose option: ").strip()
 
@@ -134,7 +145,10 @@ class LibraryApp:
                     print("Invalid Book ID.")
 
             elif choice == "5":
-                print("Logging out.")
+                self.system.view_all_books()
+
+            elif choice == "6":
+                print("Log out.")
                 break
 
             else:
