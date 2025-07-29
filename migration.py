@@ -1,6 +1,7 @@
 import sqlite3
 import bcrypt
 import json
+from datetime import datetime, timedelta
 
 class LibrarySystem:
     def __init__(self, db_name="mydatabase.db"):
@@ -10,13 +11,13 @@ class LibrarySystem:
         return sqlite3.connect(self.db_name)
 
     def create_tables(self):
-        #context manager protocol
         with self.get_connection() as conn:
             cursor = conn.cursor()
 
-            cursor.execute("DROP TABLE IF EXISTS users")   # issue during the output so removing the old table
+            cursor.execute("DROP TABLE IF EXISTS users")  # remove old tables for fresh start
+            cursor.execute("DROP TABLE IF EXISTS books")
+            cursor.execute("DROP TABLE IF EXISTS borrowed_books")
 
-            # users table
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS users (
                     id INTEGER PRIMARY KEY,
@@ -28,7 +29,6 @@ class LibrarySystem:
                 );
             ''')
 
-            # books table
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS books (
                     id INTEGER PRIMARY KEY,
@@ -37,38 +37,37 @@ class LibrarySystem:
                     year INTEGER
                 );
             ''')
-
-            # many to many relationship table
+#many to many relationship __#3NF form
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS borrowed_books (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    book_id INTEGER,
-                    user_id INTEGER,
+                    book_id INTEGER NOT NULL,
+                    user_id INTEGER NOT NULL,
                     borrow_date TEXT,
                     return_date TEXT,
-                    issued_by TEXT,
+                    issued_by_id INTEGER NOT NULL,
                     fine REAL DEFAULT 0,
-                    is_paid INTEGER DEFAULT 0, 
-                    FOREIGN KEY (issued_by) REFERENCES users(username),
-                    FOREIGN KEY(book_id) REFERENCES books(id),
-                    FOREIGN KEY(user_id) REFERENCES users(id)
+                    is_paid INTEGER DEFAULT 0,
+                    FOREIGN KEY (book_id) REFERENCES books(id),
+                    FOREIGN KEY (user_id) REFERENCES users(id),
+                    FOREIGN KEY (issued_by_id) REFERENCES users(id)
                 );
             ''')
 
             # Check if admin user exists
-            cursor.execute("SELECT * FROM users WHERE username = 'admin'")
+            cursor.execute("SELECT * FROM users WHERE role = 'admin' LIMIT 1")
             admin_exists = cursor.fetchone()
 
             if not admin_exists:
                 try:
                     with open("credential.json", "r") as f:
-                        data = json.load(f) #pointer
+                        data = json.load(f)
                 except FileNotFoundError:
-                    print("credential.json file not found.")
+                    print("credential.json file not found. Please create an admin user manually.")
                     return
-                except json.JSONDecodeError as e:  #json decoder error
-                 print(f"Error parsing JSON in credential.json: {e}")
-                return
+                except json.JSONDecodeError as e:
+                    print(f"Error parsing JSON in credential.json: {e}")
+                    return
 
                 username = data.get("username")
                 password = data.get("password")
@@ -77,7 +76,7 @@ class LibrarySystem:
                 role = "admin"
 
                 if not all([username, password, dob, email]):
-                    print("Incomplete admin credentials.")
+                    print("Incomplete admin credentials in credential.json.")
                     return
 
                 hashed_password = bcrypt.hashpw(password.encode(), bcrypt.gensalt())
@@ -91,8 +90,8 @@ class LibrarySystem:
             else:
                 print("Admin already exists.")
 
-           
-            print("Tables are created.")
+            conn.commit()
+            print("Tables created/verified.")
 
 if __name__ == "__main__":
     system = LibrarySystem()
