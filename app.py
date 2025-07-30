@@ -1,6 +1,7 @@
 from getpass import getpass
 from migration import LibrarySystem as MigrationSystem
 from db import LibrarySystem
+from utility import validate_dob, validate_username #importing them from utility.py file
 
 class LibraryApp:
     def __init__(self):
@@ -33,19 +34,30 @@ class LibraryApp:
 
             elif choice == "2":
                 self.system.get_info()
-
+    #signup with dob validation &username validation
             elif choice == "3":
                 print("\nSign Up")
                 username = input("Choose username: ").strip()
+                if not validate_username(username): #check the given userame is valid or not
+                    print("Username must be at least 3 characters long.")
+                    continue
+                if self.system.get_user_id_by_username(username):
+                 print("Username already exists.")
+                 continue
+
+                break 
                 password = getpass("Choose password: ")
-                dob = self.system.validate_dob()
+
+                dob = input("Enter DOB (YYYY-MM-DD): ").strip()
+                if not validate_dob(dob):
+                    print("Invalid DOB format! Must be YYYY-MM-DD.")
+                    continue
 
                 email = input("Enter email: ").strip()
-                role = input("Enter role : ").strip().lower()
-                if role not in ( "student"):
-                    print("Invalid role.")
-                    continue
-                creator_role = "admin" if self.current_role == "admin" else "student"
+
+          #default role:student
+                role = "student"
+                creator_role = "student"
                 self.system.signup_user(username, password, dob, email, role, creator_role)
 
             elif choice == "4":
@@ -66,7 +78,8 @@ class LibraryApp:
             print("6. Mark Student Fine as Paid")
             print("7. View All Books")
             print("8. Issue Book to Student")
-            print("9. Logout")
+            print("9. Create User/Admin Account")
+            print("10. Logout")
 
             choice = input("Choose an option: ").strip()
 
@@ -108,6 +121,34 @@ class LibraryApp:
                 self.system.issue_book(book_id, borrower_username, admin_username)
 
             elif choice == "9":
+                # Admin creating new user or admin account
+                print("\nCreate new user/admin account")
+                username = input("Choose username: ").strip()
+                if not validate_username(username):
+                    print("Username must be at least 3 characters long.")
+                    continue
+                if self.system.get_user_id_by_username(username):
+                 print("This username already exists. Please choose another.")
+                continue
+
+                break
+                password = getpass("Choose password: ")
+
+                dob = input("Enter DOB (YYYY-MM-DD): ").strip()
+                if not validate_dob(dob):
+                    print("Invalid DOB format! Must be YYYY-MM-DD.")
+                    continue
+
+                email = input("Enter email: ").strip()
+                role = input("Enter role (admin/student): ").strip().lower()
+                if role not in ("admin", "student"):
+                    print("Invalid role.")
+                    continue
+
+                creator_role = "admin"  # admin is creating this account
+                self.system.signup_user(username, password, dob, email, role, creator_role)
+
+            elif choice == "10":
                 print("Logging out.")
                 self.current_role = None
                 break

@@ -218,68 +218,77 @@ class LibrarySystem:
     
 
       # Renew borrowed book
-def renew_book(self):
-    with self.get_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute('''
-            SELECT borrowed_books.id, users.username, books.title,
-                   borrowed_books.borrow_date, borrowed_books.return_date
-            FROM borrowed_books
-            JOIN users ON borrowed_books.user_id = users.id
-            JOIN books ON borrowed_books.book_id = books.id
-            WHERE borrowed_books.return_date IS NULL
-            ORDER BY borrowed_books.return_date ASC
-        ''')
-        borrowed = cursor.fetchall()
 
-        if not borrowed:
-            print("\nNo borrowed books to renew.\n")
-            return
 
-        print("\nBorrowed Books:")
-        print("{0:5} {1:15} {2:30} {3:12} {4:12}".format("ID", "User", "Book Title", "Borrow Date", "Return Date"))
-        for book in borrowed:
-            borrow_date = book[3] if book[3] else "Unknown"
-            return_date = book[4] if book[4] else "Not returned"
-            print("{0:5} {1:15} {2:30} {3:12} {4:12}".format(book[0], book[1], book[2], borrow_date, return_date))
+    def renew_book(self):
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT borrowed_books.id, users.username, books.title,
+                       borrowed_books.borrow_date, borrowed_books.return_date
+                FROM borrowed_books
+                JOIN users ON borrowed_books.user_id = users.id
+                JOIN books ON borrowed_books.book_id = books.id
+                WHERE borrowed_books.return_date IS NULL
+                ORDER BY borrowed_books.return_date ASC
+            ''')
+            borrowed = cursor.fetchall()
 
-        while True:
-            try:
-                borrow_id = int(input("\nEnter the borrowed book ID to renew (0 to cancel): "))
-                if borrow_id == 0:
-                    print("Renewal canceled.")
-                    return
-                if borrow_id not in [b[0] for b in borrowed]:
-                    print("Invalid ID. Please try again.")
-                    continue
-                break
-            except ValueError:
-                print("Invalid input. Please enter a numeric ID.")
-            except json.JSONDecodeError as e:
-                    print(f"Error parsing JSON in credential.json: {e}")
-                    return
- 
-        cursor.execute('SELECT return_date FROM borrowed_books WHERE id = ?', (borrow_id,))
-        result = cursor.fetchone()
-
-        try:
-            old_date = datetime.strptime(result[0], "%Y-%m-%d") if result[0] else datetime.today()
-            new_date = old_date + timedelta(days=15)
-
-            print(f"\nCurrent return date: {old_date.date()}")
-            confirm = input(f"Do you want to extend the return date to {new_date.date()}? (yes/no): ").strip().lower()
-            if confirm != 'yes':
-                print("Renewal cancelled.")
+            if not borrowed:
+                print("\nNo borrowed books to renew.\n")
                 return
 
-            cursor.execute('UPDATE borrowed_books SET return_date = ? WHERE id = ?', (new_date.strftime("%Y-%m-%d"), borrow_id))
-            conn.commit()
-            print(f"Renewal successful! New return date is {new_date.date()}.\n")
-        except Exception as e:
-            print("An error occurred during renewal:", e)
+            print("\nBorrowed Books:")
+            print("{0:5} {1:15} {2:30} {3:12} {4:12}".format(
+                "ID", "User", "Book Title", "Borrow Date", "Return Date"))
+            for book in borrowed:
+                borrow_date = book[3] if book[3] else "Unknown"
+                return_date = book[4] if book[4] else "Not returned"
+                print("{0:5} {1:15} {2:30} {3:12} {4:12}".format(
+                    book[0], book[1], book[2], borrow_date, return_date))
+
+            # Ask admin for borrowed book ID
+            while True:
+                try:
+                    borrow_id = int(input("\nEnter the borrowed book ID to renew (0 to cancel): "))
+                    if borrow_id == 0:
+                        print("Renewal canceled.")
+                        return
+                    if borrow_id not in [b[0] for b in borrowed]:
+                        print("Invalid ID. Please try again.")
+                        continue
+                    break
+                except ValueError:
+                    print("Invalid input. Please enter a numeric ID.")
+
+            # Fetch the current return date
+            cursor.execute('SELECT return_date FROM borrowed_books WHERE id = ?', (borrow_id,))
+            result = cursor.fetchone()
+
+            try:
+                old_date = datetime.strptime(result[0], "%Y-%m-%d") if result[0] else datetime.today()
+                new_date = old_date + timedelta(days=15)
+
+                print(f"\nCurrent return date: {old_date.date()}")
+                confirm = input(
+                    f"Do you want to extend the return date to {new_date.date()}? (yes/no): "
+                ).strip().lower()
+                if confirm != 'yes':
+                    print("Renewal cancelled.")
+                    return
+
+                cursor.execute(
+                    'UPDATE borrowed_books SET return_date = ? WHERE id = ?',
+                    (new_date.strftime("%Y-%m-%d"), borrow_id)
+                )
+                conn.commit()
+                print(f"Renewal successful! New return date is {new_date.date()}.\n")
+            except Exception as e:
+                print("An error occurred during renewal:", e)
+
 
    
-     # Return borrowed book and calculate fine
+     # Return borrowed book 
     def return_book(self, book_id, user_id):
         with self.get_connection() as conn:
             cursor = conn.cursor()
@@ -377,15 +386,7 @@ def renew_book(self):
             except json.JSONDecodeError as e:
                     print(f"Error parsing JSON in credential.json: {e}")
                     return
-    def validate_dob():
    
-      while True:
-        dob = input("Enter DOB (YYYY-MM-DD): ").strip()
-        try:
-            datetime.strptime(dob, "%Y-%m-%d")  # validates format and correct date
-            return dob
-        except ValueError:
-            print("Invalid date format! Please enter in YYYY-MM-DD format (e.g., 2000-05-25).")
 if __name__ == "__main__":
     system = LibrarySystem()
     system.create_tables()
