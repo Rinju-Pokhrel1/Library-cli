@@ -8,7 +8,7 @@ class LibraryApp:
         migration.create_tables()
 
         self.system = LibrarySystem()
-        self.current_role = None  # Track current logged-in user role
+        self.current_role = None
 
     def menu(self):
         while True:
@@ -38,10 +38,11 @@ class LibraryApp:
                 print("\nSign Up")
                 username = input("Choose username: ").strip()
                 password = getpass("Choose password: ")
-                dob = input("Enter DOB (YYYY-MM-DD): ").strip()
+                dob = self.system.validate_dob()
+
                 email = input("Enter email: ").strip()
-                role = input("Enter role (admin/student): ").strip().lower()
-                if role not in ("admin", "student"):
+                role = input("Enter role : ").strip().lower()
+                if role not in ( "student"):
                     print("Invalid role.")
                     continue
                 creator_role = "admin" if self.current_role == "admin" else "student"
@@ -137,7 +138,8 @@ class LibraryApp:
                 self.system.return_book(book_id, user_id)
 
             elif choice == "3":
-                self.system.view_student_fines(user_id)
+                fine = self.system.calculate_fine(username)
+                print(f"Your total fine is: Rs. {fine}")
 
             elif choice == "4":
                 print("Logging out.")

@@ -1,4 +1,4 @@
-from db import signup_user,  get_info, login_system
+
 from welcome import signup  
 from getpass import getpass 
 from db import LibrarySystem
@@ -16,33 +16,37 @@ def menu():
         choice = input("Choose an option: ")
 
         match choice:
-            case '1':
+             case '1':
                 print("\nLogin to the portal")
-                username = input("Enter username: ")
-                password = getpass("Enter password: ")
-                login_system()
-                if login_system(username,password):
-                    print("welcome you are logged in!")
+                username, role = system.login_system()  #error 1, 2 soln
+                if username:
+                    print("Welcome! You are logged in.")
                 else:
                     print("Login failed. Please try again.")
-                    record=input("press any key to return main menu")
-                    if record:
-                        menu()
-            case '2':
+                    input("Press any key to return to main menu")
+
+
+             case '2':
                 print("\nGet info")
-                get_info()
-            case '3':
+                system.get_info()
+             case '3':
                 print("\nLogin to the system")
-                login_system()
-            case '4':
+                system.login_system()
+             case '4':
                 print("\nSign up")
-                username, password, dob, email = signup() 
-                signup_user(username, password, dob, email) 
-            case '5':
+                username, password, dob, email = signup()
+
+                # Ask for role
+                role = input("Enter role (admin/student): ").strip().lower()
+
+                
+                creator_role = "admin"
+
+                system.signup_user(username, password, dob, email, role, creator_role)
+             case '5':
                 print("\nExit")
                 break
-            case _:
-                print("\nInvalid choice. Try again.")
 
 if __name__ == "__main__":
     menu()
+ 

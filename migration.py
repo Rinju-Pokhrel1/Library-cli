@@ -14,10 +14,7 @@ class LibrarySystem:
         with self.get_connection() as conn:
             cursor = conn.cursor()
 
-            cursor.execute("DROP TABLE IF EXISTS users")  # remove old tables for fresh start
-            cursor.execute("DROP TABLE IF EXISTS books")
-            cursor.execute("DROP TABLE IF EXISTS borrowed_books")
-
+         
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS users (
                     id INTEGER PRIMARY KEY,

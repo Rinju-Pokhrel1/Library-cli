@@ -377,6 +377,15 @@ def renew_book(self):
             except json.JSONDecodeError as e:
                     print(f"Error parsing JSON in credential.json: {e}")
                     return
+    def validate_dob():
+   
+      while True:
+        dob = input("Enter DOB (YYYY-MM-DD): ").strip()
+        try:
+            datetime.strptime(dob, "%Y-%m-%d")  # validates format and correct date
+            return dob
+        except ValueError:
+            print("Invalid date format! Please enter in YYYY-MM-DD format (e.g., 2000-05-25).")
 if __name__ == "__main__":
     system = LibrarySystem()
     system.create_tables()
