@@ -31,7 +31,8 @@ class LibrarySystem:
                     id INTEGER PRIMARY KEY,
                     title TEXT,
                     author TEXT,
-                    year INTEGER
+                    year INTEGER,
+                   quantity INTEGER NOT NULL DEFAULT 1      
                 );
             ''')
 #many to many relationship __#3NF form

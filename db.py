@@ -3,6 +3,7 @@ import bcrypt
 from getpass import getpass
 from datetime import datetime, timedelta
 import json
+from migration import LibrarySystem as MigrationLibrarySystem  # Import from migration
 
 class LibrarySystem:
     def __init__(self, db_name="mydatabase.db"):
@@ -54,37 +55,45 @@ class LibrarySystem:
 #info
     def get_info(self):
         print("Library Management System")
-#get all users
+#getalluser
     def get_all_users(self):
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT username, email FROM users")
             return cursor.fetchall()
-#userid by username
+#getalluser by username
     def get_user_id_by_username(self, username):
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT id FROM users WHERE username = ?", (username,))
             result = cursor.fetchone()
             return result[0] if result else None
-
-    # add book
-    def add_book(self, title, author, year):
+#add book
+    def add_book(self, title, author, year, quantity):
         try:
             year = int(year)
         except ValueError:
             print("Year must be a valid number.")
             return
 
+        try:
+            quantity = int(quantity)
+            if quantity <= 0:
+                print("Quantity must be a positive number.")
+                return
+        except ValueError:
+            print("Quantity must be a valid number.")
+            return
+
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute(
-                "INSERT INTO books (title, author, year) VALUES (?, ?, ?)",
-                (title, author, year)
+                "INSERT INTO books (title, author, year, quantity) VALUES (?, ?, ?, ?)",
+                (title, author, year, quantity)
             )
             conn.commit()
             print("Book added.")
-#update book
+
     def update_book(self):
         book_id = input("Enter book ID to update: ").strip()
         if not book_id.isdigit():
@@ -123,7 +132,7 @@ class LibrarySystem:
             )
             conn.commit()
             print("Book updated.")
-#delete book
+
     def delete_book(self):
         book_id = input("Enter book ID to delete: ").strip()
         if not book_id.isdigit():
@@ -139,11 +148,11 @@ class LibrarySystem:
             cursor.execute("DELETE FROM books WHERE id = ?", (book_id,))
             conn.commit()
             print("Book deleted.")
-#view book
+
     def view_all_books(self):
         with self.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute("SELECT id, title, author, year FROM books")
+            cursor.execute("SELECT id, title, author, year, quantity FROM books")
             books = cursor.fetchall()
 
             if not books:
@@ -152,9 +161,8 @@ class LibrarySystem:
 
             print("\nAll Books in Library:")
             for book in books:
-                print(f"ID: {book[0]} | Title: {book[1]} | Author: {book[2]} | Year: {book[3]}")
+                print(f"ID: {book[0]} | Title: {book[1]} | Author: {book[2]} | Year: {book[3]} | Quantity: {book[4]}")
 
-    # issue book
     def issue_book(self, book_id, borrower_username, issuer_username):
         if not str(book_id).isdigit():
             print("Invalid book ID.")
@@ -163,9 +171,16 @@ class LibrarySystem:
         with self.get_connection() as conn:
             cursor = conn.cursor()
 
-            cursor.execute("SELECT id FROM books WHERE id = ?", (book_id,))
-            if not cursor.fetchone():
+            # Check book existence and quantity
+            cursor.execute("SELECT quantity FROM books WHERE id = ?", (book_id,))
+            book_row = cursor.fetchone()
+            if not book_row:
                 print("Invalid book ID.")
+                return
+            quantity = book_row[0]
+
+            if quantity <= 0:
+                print("No copies of the book are currently available.")
                 return
 
             borrower_id = self.get_user_id_by_username(borrower_username)
@@ -179,11 +194,11 @@ class LibrarySystem:
                 return
 
             cursor.execute(
-                "SELECT id FROM borrowed_books WHERE book_id = ? AND return_date IS NULL",
-                (book_id,)
+                "SELECT id FROM borrowed_books WHERE book_id = ? AND user_id = ? AND return_date IS NULL",
+                (book_id, borrower_id)
             )
             if cursor.fetchone():
-                print("Book is currently borrowed and not yet returned.")
+                print("This borrower already has the book borrowed and not yet returned.")
                 return
 
             borrow_date = datetime.today().strftime("%Y-%m-%d")
@@ -192,103 +207,15 @@ class LibrarySystem:
                 "INSERT INTO borrowed_books (book_id, user_id, borrow_date, issued_by_id) VALUES (?, ?, ?, ?)",
                 (book_id, borrower_id, borrow_date, issuer_id)
             )
+
+            cursor.execute(
+                "UPDATE books SET quantity = quantity - 1 WHERE id = ?",
+                (book_id,)
+            )
+
             conn.commit()
             print(f"Book ID {book_id} issued to {borrower_username} by {issuer_username}.")
-#view borrowed books
-    def view_borrowed_books(self, user_id):
-        with self.get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT borrowed_books.id, books.title, borrowed_books.borrow_date, borrowed_books.return_date
-                FROM borrowed_books
-                JOIN books ON borrowed_books.book_id = books.id
-                WHERE borrowed_books.user_id = ? AND borrowed_books.return_date IS NULL
-            """, (user_id,))
-            rows = cursor.fetchall()
 
-            if not rows:
-                print("No borrowed books found.")
-                return
-
-            print("\nBorrowed Books:")
-            print(f"{'ID':<5} {'Title':<30} {'Borrow Date':<12} {'Return Date':<12}")
-            for row in rows:
-                print(f"{row[0]:<5} {row[1]:<30} {row[2]:<12} {'Not returned':<12}")
-
-    
-
-      # Renew borrowed book
-
-
-    def renew_book(self):
-        with self.get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute('''
-                SELECT borrowed_books.id, users.username, books.title,
-                       borrowed_books.borrow_date, borrowed_books.return_date
-                FROM borrowed_books
-                JOIN users ON borrowed_books.user_id = users.id
-                JOIN books ON borrowed_books.book_id = books.id
-                WHERE borrowed_books.return_date IS NULL
-                ORDER BY borrowed_books.return_date ASC
-            ''')
-            borrowed = cursor.fetchall()
-
-            if not borrowed:
-                print("\nNo borrowed books to renew.\n")
-                return
-
-            print("\nBorrowed Books:")
-            print("{0:5} {1:15} {2:30} {3:12} {4:12}".format(
-                "ID", "User", "Book Title", "Borrow Date", "Return Date"))
-            for book in borrowed:
-                borrow_date = book[3] if book[3] else "Unknown"
-                return_date = book[4] if book[4] else "Not returned"
-                print("{0:5} {1:15} {2:30} {3:12} {4:12}".format(
-                    book[0], book[1], book[2], borrow_date, return_date))
-
-            # Ask admin for borrowed book ID
-            while True:
-                try:
-                    borrow_id = int(input("\nEnter the borrowed book ID to renew (0 to cancel): "))
-                    if borrow_id == 0:
-                        print("Renewal canceled.")
-                        return
-                    if borrow_id not in [b[0] for b in borrowed]:
-                        print("Invalid ID. Please try again.")
-                        continue
-                    break
-                except ValueError:
-                    print("Invalid input. Please enter a numeric ID.")
-
-            # Fetch the current return date
-            cursor.execute('SELECT return_date FROM borrowed_books WHERE id = ?', (borrow_id,))
-            result = cursor.fetchone()
-
-            try:
-                old_date = datetime.strptime(result[0], "%Y-%m-%d") if result[0] else datetime.today()
-                new_date = old_date + timedelta(days=15)
-
-                print(f"\nCurrent return date: {old_date.date()}")
-                confirm = input(
-                    f"Do you want to extend the return date to {new_date.date()}? (yes/no): "
-                ).strip().lower()
-                if confirm != 'yes':
-                    print("Renewal cancelled.")
-                    return
-
-                cursor.execute(
-                    'UPDATE borrowed_books SET return_date = ? WHERE id = ?',
-                    (new_date.strftime("%Y-%m-%d"), borrow_id)
-                )
-                conn.commit()
-                print(f"Renewal successful! New return date is {new_date.date()}.\n")
-            except Exception as e:
-                print("An error occurred during renewal:", e)
-
-
-   
-     # Return borrowed book 
     def return_book(self, book_id, user_id):
         with self.get_connection() as conn:
             cursor = conn.cursor()
@@ -312,19 +239,22 @@ class LibrarySystem:
                 SET return_date = ?, fine = ?, is_paid = 0
                 WHERE id = ?
             """, (today_str, fine, borrow_id))
+
+            cursor.execute("""
+                UPDATE books SET quantity = quantity + 1 WHERE id = ?
+            """, (book_id,))
+
             conn.commit()
             print(f"Book returned. Fine: Rs.{fine}")
 
-      # Calculate fine 
     def calculate_fine(self, issue_date, return_date=None, allowed_days=15, daily_fine=5):
         issue_date = datetime.strptime(issue_date, "%Y-%m-%d")
         today = datetime.today() if return_date is None else datetime.strptime(return_date, "%Y-%m-%d")
         days_passed = (today - issue_date).days
         overdue_days = max(0, days_passed - allowed_days)
         return overdue_days * daily_fine
-
-
-    # View fines for a student
+    
+     # View fines for a student
     def view_student_fines(self, user_id):
         with self.get_connection() as conn:
             cursor = conn.cursor()
@@ -383,12 +313,21 @@ class LibrarySystem:
                 print("Fine marked as paid.")
             except (IndexError, ValueError):
                 print("Invalid choice.")
-            except json.JSONDecodeError as e:
-                    print(f"Error parsing JSON in credential.json: {e}")
-                    return
-   
-if __name__ == "__main__":
-    system = LibrarySystem()
-    system.create_tables()
+          
+    def get_total_fine_for_user(self, user_id):
+      with self.get_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT borrow_date, return_date FROM borrowed_books
+            WHERE user_id = ? AND (return_date IS NULL OR fine IS NOT NULL)
+        """, (user_id,))
+        records = cursor.fetchall()
 
-    
+        total_fine = 0
+        for borrow_date, return_date in records:
+          fine = self.calculate_fine(borrow_date, return_date)
+          total_fine += fine
+
+        return total_fine
+
+   
