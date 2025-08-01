@@ -2,6 +2,7 @@ from getpass import getpass
 from migration import LibrarySystem as MigrationSystem
 from db import LibrarySystem
 from utility import validate_dob, validate_username #importing them from utility.py file
+from mail import send_email  # Assuming you have a mail.py for sending emails
 
 class LibraryApp:
     def __init__(self):
@@ -80,7 +81,8 @@ class LibraryApp:
         print("8. Issue Book to Student")
         print("9. Create User/Admin Account")
         print("10. View Student Fines")
-        print("11. Logout")
+        print("11. Send Email to Student")
+        print("12. Logout")
 
         choice = input("Choose an option: ").strip()
 
@@ -163,8 +165,14 @@ class LibraryApp:
                 self.system.view_student_fines(student_id)
             else:
                 print("Student not found.")
-
         elif choice == "11":
+          receiver = input("Enter recipient email: ").strip()
+          subject = input("Enter email subject: ").strip()
+          body = input("Enter email body: ").strip()
+  
+          send_email(receiver, subject, body)
+
+        elif choice == "12":
             print("Logging out.")
             self.current_role = None
             break
