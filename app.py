@@ -1,8 +1,10 @@
+import bcrypt
 from getpass import getpass
 from migration import LibrarySystem as MigrationSystem
 from db import LibrarySystem
 from utility import validate_dob, validate_username #importing them from utility.py file
-from mail import send_email  # Assuming you have a mail.py for sending emails
+from mail import send_email  
+# Assuming you have a mail.py for sending emails
 
 class LibraryApp:
     def __init__(self):
