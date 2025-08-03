@@ -2,8 +2,8 @@ import sqlite3
 import bcrypt
 from getpass import getpass
 from datetime import datetime, timedelta
-import json
 from migration import LibrarySystem as MigrationLibrarySystem  # Import from migration
+
 
 class LibrarySystem:
     def __init__(self, db_name="mydatabase.db"):
@@ -52,24 +52,27 @@ class LibrarySystem:
 
         print("\nInvalid username or password.\n")
         return None, None
-#info
+
     def get_info(self):
         print("Library Management System")
-#getalluser
+
+    # Get all users
     def get_all_users(self):
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT username, email FROM users")
             return cursor.fetchall()
-#getalluser by username
+
+    # Get user ID by username
     def get_user_id_by_username(self, username):
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT id FROM users WHERE username = ?", (username,))
             result = cursor.fetchone()
             return result[0] if result else None
-#add book
-    def add_book(self, title, author, year, quantity):
+
+    # Add book
+    def add_book(self, title, author, year, quantity=1):
         try:
             year = int(year)
         except ValueError:
@@ -154,14 +157,7 @@ class LibrarySystem:
             cursor = conn.cursor()
             cursor.execute("SELECT id, title, author, year, quantity FROM books")
             books = cursor.fetchall()
-
-            if not books:
-                print("No books found.")
-                return
-
-            print("\nAll Books in Library:")
-            for book in books:
-                print(f"ID: {book[0]} | Title: {book[1]} | Author: {book[2]} | Year: {book[3]} | Quantity: {book[4]}")
+            return books  # Return list of tuples
 
     def issue_book(self, book_id, borrower_username, issuer_username):
         if not str(book_id).isdigit():
@@ -171,7 +167,6 @@ class LibrarySystem:
         with self.get_connection() as conn:
             cursor = conn.cursor()
 
-            # Check book existence and quantity
             cursor.execute("SELECT quantity FROM books WHERE id = ?", (book_id,))
             book_row = cursor.fetchone()
             if not book_row:
@@ -253,36 +248,19 @@ class LibrarySystem:
         days_passed = (today - issue_date).days
         overdue_days = max(0, days_passed - allowed_days)
         return overdue_days * daily_fine
-    
-     # View fines for a student
+
+    # View fines for a student
     def view_student_fines(self, user_id):
         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
-                SELECT books.title, borrowed_books.borrow_date, borrowed_books.return_date,
-                       borrowed_books.fine, borrowed_books.is_paid
+                SELECT borrowed_books.book_id, borrowed_books.fine, borrowed_books.is_paid
                 FROM borrowed_books
-                JOIN books ON borrowed_books.book_id = books.id
                 WHERE borrowed_books.user_id = ?
             """, (user_id,))
-            records = cursor.fetchall()
+            return cursor.fetchall()
 
-            total_fine = 0
-            total_paid = 0
-
-            print("Title        Borrowed     Returned     Fine  Paid")
-            for title, borrow_date, return_date, fine, is_paid in records:
-                status = "Yes" if is_paid else "No"
-                total_fine += fine
-                if is_paid:
-                    total_paid += fine
-                print(f"{title:<12} {borrow_date:<12} {return_date or 'Not returned':<15} Rs.{fine:<5} {status}")
-
-            print(f"Total Fine: Rs.{total_fine}")
-            print(f"Total Paid: Rs.{total_paid}")
-            print(f"Unpaid: Rs.{total_fine - total_paid}")
-
-       # Mark fine as paid
+    # Mark fine as paid
     def mark_fine_as_paid(self, user_id):
         with self.get_connection() as conn:
             cursor = conn.cursor()
@@ -313,21 +291,30 @@ class LibrarySystem:
                 print("Fine marked as paid.")
             except (IndexError, ValueError):
                 print("Invalid choice.")
-          
+
     def get_total_fine_for_user(self, user_id):
-      with self.get_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT borrow_date, return_date FROM borrowed_books
-            WHERE user_id = ? AND (return_date IS NULL OR fine IS NOT NULL)
-        """, (user_id,))
-        records = cursor.fetchall()
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT borrow_date, return_date FROM borrowed_books
+                WHERE user_id = ? AND (return_date IS NULL OR fine IS NOT NULL)
+            """, (user_id,))
+            records = cursor.fetchall()
 
-        total_fine = 0
-        for borrow_date, return_date in records:
-          fine = self.calculate_fine(borrow_date, return_date)
-          total_fine += fine
+            total_fine = 0
+            for borrow_date, return_date in records:
+                fine = self.calculate_fine(borrow_date, return_date)
+                total_fine += fine
 
-        return total_fine
+            return total_fine
 
-   
+    def view_borrowed_books(self, user_id):
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT books.id, books.title, borrowed_books.borrow_date
+                FROM borrowed_books
+                JOIN books ON books.id = borrowed_books.book_id
+                WHERE borrowed_books.user_id = ? AND borrowed_books.return_date IS NULL
+            """, (user_id,))
+            return cursor.fetchall()
