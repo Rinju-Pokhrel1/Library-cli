@@ -318,19 +318,20 @@ class LibrarySystem:
                 WHERE borrowed_books.user_id = ? AND borrowed_books.return_date IS NULL
             """, (user_id,))
             return cursor.fetchall()
-        def renew_book(self):
-         username = input("Enter student username to renew book for: ").strip()
-         user_id = self.get_user_id_by_username(username)
-         if user_id is None:
+
+    def renew_book(self):
+        username = input("Enter student username to renew book for: ").strip()
+        user_id = self.get_user_id_by_username(username)
+        if user_id is None:
             print("User not found.")
             return
 
-         book_id = input("Enter book ID to renew: ").strip()
-         if not book_id.isdigit():
+        book_id = input("Enter book ID to renew: ").strip()
+        if not book_id.isdigit():
             print("Invalid book ID.")
             return
 
-         with self.get_connection() as conn:
+        with self.get_connection() as conn:
             cursor = conn.cursor()
 
             # Check if the book is currently borrowed by this user
