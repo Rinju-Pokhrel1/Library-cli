@@ -318,3 +318,41 @@ class LibrarySystem:
                 WHERE borrowed_books.user_id = ? AND borrowed_books.return_date IS NULL
             """, (user_id,))
             return cursor.fetchall()
+        def renew_book(self):
+         username = input("Enter student username to renew book for: ").strip()
+         user_id = self.get_user_id_by_username(username)
+         if user_id is None:
+            print("User not found.")
+            return
+
+         book_id = input("Enter book ID to renew: ").strip()
+         if not book_id.isdigit():
+            print("Invalid book ID.")
+            return
+
+         with self.get_connection() as conn:
+            cursor = conn.cursor()
+
+            # Check if the book is currently borrowed by this user
+            cursor.execute("""
+                SELECT id FROM borrowed_books
+                WHERE book_id = ? AND user_id = ? AND return_date IS NULL
+            """, (book_id, user_id))
+            record = cursor.fetchone()
+
+            if not record:
+                print("This user has not borrowed this book or has already returned it.")
+                return
+
+            borrowed_id = record[0]
+
+            # Update borrow_date to today's date (renewing)
+            new_borrow_date = datetime.today().strftime("%Y-%m-%d")
+            cursor.execute("""
+                UPDATE borrowed_books
+                SET borrow_date = ?
+                WHERE id = ?
+            """, (new_borrow_date, borrowed_id))
+
+            conn.commit()
+            print(f"Book ID {book_id} renewed for {username}. New borrow date: {new_borrow_date}")
