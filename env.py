@@ -1,2 +1,0 @@
-API_KEY=your_real_api_key
-SENDER_EMAIL=example@example.com
