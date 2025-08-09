@@ -2,7 +2,6 @@ import sqlite3
 import bcrypt
 from getpass import getpass
 from datetime import datetime, timedelta
-from migration import LibrarySystem as MigrationLibrarySystem  # Import from migration
 
 
 class LibrarySystem:
@@ -308,8 +307,10 @@ class LibrarySystem:
 
             return total_fine
 
+    from datetime import datetime, timedelta
+
     def view_borrowed_books(self, user_id):
-        with self.get_connection() as conn:
+         with self.get_connection() as conn:
             cursor = conn.cursor()
             cursor.execute("""
                 SELECT books.id, books.title, borrowed_books.borrow_date
@@ -317,7 +318,16 @@ class LibrarySystem:
                 JOIN books ON books.id = borrowed_books.book_id
                 WHERE borrowed_books.user_id = ? AND borrowed_books.return_date IS NULL
             """, (user_id,))
-            return cursor.fetchall()
+            results = cursor.fetchall()
+
+            updated = []
+            for book_id, title, borrow_date in results:
+                borrow_dt = datetime.strptime(borrow_date, "%Y-%m-%d")
+                due_date = borrow_dt + timedelta(days=14)  # 14 days loan period
+                updated.append((book_id, title, due_date.strftime("%Y-%m-%d")))
+
+            return updated
+
 
     def renew_book(self):
         username = input("Enter student username to renew book for: ").strip()

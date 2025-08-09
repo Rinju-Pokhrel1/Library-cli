@@ -1,4 +1,4 @@
-import bcrypt
+
 from getpass import getpass
 from migration import LibrarySystem as MigrationSystem
 from db import LibrarySystem
